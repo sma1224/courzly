@@ -1,0 +1,170 @@
+{
+  "nodes": [
+    {
+      "id": "requirements-gathering",
+      "type": "conversationalAgent",
+      "data": {
+        "label": "Requirements Gathering Agent",
+        "name": "requirements-gathering",
+        "systemMessage": "You are an expert educational consultant specializing in course requirements analysis. Your role is to gather comprehensive information about the desired course through intelligent questioning. Ask about: target audience, learning objectives, course duration, difficulty level, prerequisites, assessment methods, and specific topics to cover. Be thorough but efficient in your questioning.",
+        "inputs": {
+          "memory": "{{bufferMemory.data}}",
+          "tools": ["{{requirementsValidationTool.data}}"]
+        }
+      },
+      "position": { "x": 100, "y": 100 }
+    },
+    {
+      "id": "outline-generation",
+      "type": "llmChain",
+      "data": {
+        "label": "Course Outline Generator",
+        "name": "outline-generation",
+        "prompt": "Based on the requirements: {requirements}\n\nGenerate a comprehensive course outline with:\n1. Course title and description\n2. Learning objectives (3-5 specific, measurable outcomes)\n3. Module breakdown with topics and subtopics\n4. Estimated time for each module\n5. Assessment strategy\n6. Prerequisites and target audience\n\nFormat as structured JSON for easy processing.",
+        "inputs": {
+          "requirements": "{{requirements-gathering.data}}"
+        }
+      },
+      "position": { "x": 400, "y": 100 }
+    },
+    {
+      "id": "human-approval-outline",
+      "type": "humanApproval",
+      "data": {
+        "label": "Outline Approval Checkpoint",
+        "name": "human-approval-outline",
+        "approvalMessage": "Please review the generated course outline and provide feedback:",
+        "inputs": {
+          "outline": "{{outline-generation.data}}"
+        },
+        "timeout": 86400,
+        "escalation": {
+          "enabled": true,
+          "escalationTime": 43200,
+          "escalationEmail": "admin@courzly.com"
+        }
+      },
+      "position": { "x": 700, "y": 100 }
+    },
+    {
+      "id": "content-creation",
+      "type": "llmChain",
+      "data": {
+        "label": "Detailed Content Creator",
+        "name": "content-creation",
+        "prompt": "Create detailed lesson content for: {module}\n\nRequirements:\n- 2000-3000 words per lesson\n- Include learning objectives\n- Provide practical examples\n- Add interactive elements\n- Include assessment questions\n- Use engaging, educational tone\n- Structure with clear headings\n\nApproved outline: {approvedOutline}",
+        "inputs": {
+          "module": "{{moduleIterator.data}}",
+          "approvedOutline": "{{human-approval-outline.data}}"
+        }
+      },
+      "position": { "x": 1000, "y": 100 }
+    },
+    {
+      "id": "content-quality-check",
+      "type": "llmChain",
+      "data": {
+        "label": "Content Quality Validator",
+        "name": "content-quality-check",
+        "prompt": "Review this lesson content for quality:\n{content}\n\nCheck for:\n1. Educational value and accuracy\n2. Appropriate length (2000-3000 words)\n3. Clear learning objectives\n4. Practical examples\n5. Assessment alignment\n6. Readability and engagement\n\nProvide quality score (1-10) and improvement suggestions.",
+        "inputs": {
+          "content": "{{content-creation.data}}"
+        }
+      },
+      "position": { "x": 1300, "y": 100 }
+    },
+    {
+      "id": "human-approval-content",
+      "type": "humanApproval",
+      "data": {
+        "label": "Content Approval Checkpoint",
+        "name": "human-approval-content",
+        "approvalMessage": "Please review the generated lesson content and quality assessment:",
+        "inputs": {
+          "content": "{{content-creation.data}}",
+          "qualityCheck": "{{content-quality-check.data}}"
+        },
+        "timeout": 86400,
+        "escalation": {
+          "enabled": true,
+          "escalationTime": 43200,
+          "escalationEmail": "admin@courzly.com"
+        }
+      },
+      "position": { "x": 1600, "y": 100 }
+    },
+    {
+      "id": "course-organization",
+      "type": "llmChain",
+      "data": {
+        "label": "Course Organization Manager",
+        "name": "course-organization",
+        "prompt": "Organize the complete course with all approved content:\n\nCourse Structure:\n{courseStructure}\n\nApproved Content:\n{approvedContent}\n\nCreate:\n1. Complete course manifest\n2. Module/lesson hierarchy\n3. Navigation structure\n4. Assessment mapping\n5. Resource organization\n6. Metadata for LMS integration",
+        "inputs": {
+          "courseStructure": "{{human-approval-outline.data}}",
+          "approvedContent": "{{human-approval-content.data}}"
+        }
+      },
+      "position": { "x": 1900, "y": 100 }
+    },
+    {
+      "id": "google-drive-integration",
+      "type": "customTool",
+      "data": {
+        "label": "Google Drive Course Publisher",
+        "name": "google-drive-integration",
+        "tool": "googleDrivePublisher",
+        "inputs": {
+          "courseData": "{{course-organization.data}}",
+          "folderStructure": "auto-generate",
+          "permissions": "stakeholder-access"
+        }
+      },
+      "position": { "x": 2200, "y": 100 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "requirements-gathering",
+      "target": "outline-generation"
+    },
+    {
+      "id": "e2",
+      "source": "outline-generation",
+      "target": "human-approval-outline"
+    },
+    {
+      "id": "e3",
+      "source": "human-approval-outline",
+      "target": "content-creation"
+    },
+    {
+      "id": "e4",
+      "source": "content-creation",
+      "target": "content-quality-check"
+    },
+    {
+      "id": "e5",
+      "source": "content-quality-check",
+      "target": "human-approval-content"
+    },
+    {
+      "id": "e6",
+      "source": "human-approval-content",
+      "target": "course-organization"
+    },
+    {
+      "id": "e7",
+      "source": "course-organization",
+      "target": "google-drive-integration"
+    }
+  ],
+  "metadata": {
+    "name": "Course Creation Pipeline",
+    "description": "Complete course creation workflow with human approval checkpoints",
+    "version": "1.0.0",
+    "category": "education",
+    "tags": ["course-creation", "education", "ai-assisted", "approval-workflow"]
+  }
+}
